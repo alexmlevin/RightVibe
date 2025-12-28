@@ -1,4 +1,4 @@
-![RightVibe Header](header.png)
+![RightVibe Header](header.jpeg)
 
 # RightVibe
 
