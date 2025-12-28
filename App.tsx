@@ -94,6 +94,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAhapChange = (updatedAhap: AHAPFile) => {
+    setAhapResult(updatedAhap);
+  };
+
   const downloadAhap = () => {
     if (!ahapResult) return;
     const blob = new Blob([JSON.stringify(ahapResult, null, 2)], { type: 'application/json' });
@@ -130,10 +134,16 @@ const App: React.FC = () => {
     }
   };
 
+  const handleScrub = (time: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-black text-white selection:bg-[#d4ff00]/30 font-inter">
       <header className="px-8 lg:px-16 py-10 border-b border-white/5 bg-black/90 backdrop-blur-xl sticky top-0 z-50 flex items-center relative">
-        {/* Left Section: Logo & Description */}
         <div className="flex-1 flex items-center">
           <div className="h-6 lg:h-7 w-auto flex items-center flex-shrink-0">
             <img 
@@ -150,12 +160,10 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Section: Product Title */}
         <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
           <span className="text-[20px] lg:text-[24px] tracking-[-0.03em] font-medium text-white pointer-events-auto">RightVibe</span>
         </div>
 
-        {/* Right Section: Link */}
         <div className="flex-1 flex justify-end items-center">
           <a href="https://levinriegner.com" target="_blank" rel="noreferrer" className="group text-[10px] font-bold uppercase tracking-[0.25em] text-white/70 hover:text-white transition-all flex items-center gap-3">
             Explore L+R 
@@ -189,8 +197,7 @@ const App: React.FC = () => {
             </div>
             
             <div 
-              className={`relative border border-white/20 rounded-none bg-[#0a0a0a] transition-all duration-1000 overflow-hidden ${!videoUrl ? 'hover:border-[#d4ff00]/60' : 'border-white/40'}`} 
-              style={{ minHeight: '420px' }}
+              className={`relative border border-white/20 rounded-none bg-[#0a0a0a] transition-all duration-1000 overflow-hidden ${!videoUrl ? 'hover:border-[#d4ff00]/60 min-h-[420px]' : 'border-white/40'}`} 
             >
               {!videoUrl ? (
                 <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer p-12 text-center group">
@@ -202,11 +209,11 @@ const App: React.FC = () => {
                   <input type="file" className="hidden" accept="video/*" onChange={handleFileChange} />
                 </label>
               ) : (
-                <div className="relative bg-black aspect-video h-full flex items-center justify-center group/video">
+                <div className="relative bg-black w-full flex items-center justify-center group/video">
                   <video 
                     ref={videoRef} 
                     src={videoUrl} 
-                    className="w-full h-full object-contain grayscale hover:grayscale-0 transition-all duration-1000" 
+                    className="w-full h-auto block grayscale hover:grayscale-0 transition-all duration-1000" 
                     onTimeUpdate={onTimeUpdate} 
                     onLoadedMetadata={onLoadedMetadata} 
                     onClick={togglePlayback} 
@@ -313,17 +320,23 @@ const App: React.FC = () => {
                   <div className="flex justify-between text-[11px] font-bold uppercase tracking-[0.5em] text-white">
                     <span className="flex items-center gap-3">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#d4ff00] animate-pulse" />
-                      Tactile Waveform Visualization
+                      Tactile Track Refinement
                     </span>
                     <span className="text-white mono bg-white/10 px-3 py-1 font-bold">{currentTime.toFixed(3)}s</span>
                   </div>
-                  <HapticVisualizer ahap={ahapResult} currentTime={currentTime} duration={duration} />
+                  <HapticVisualizer 
+                    ahap={ahapResult} 
+                    currentTime={currentTime} 
+                    duration={duration} 
+                    onAhapChange={handleAhapChange}
+                    onScrub={handleScrub}
+                  />
                   <div className="p-8 bg-zinc-900/50 border border-white/5 rounded-none group/protocol transition-colors hover:border-[#d4ff00]/20">
                     <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#d4ff00] flex items-center gap-3">
-                      <Smartphone className="w-4 h-4" /> Testing Protocol
+                      <Smartphone className="w-4 h-4" /> Professional Tuning
                     </p>
                     <p className="text-[13px] text-white mt-4 font-light leading-relaxed">
-                      To experience this track, download the .AHAP file and AirDrop it to your iPhone. Open the file directly to trigger the system haptic preview.
+                      Drag the intensity handles above to refine the haptic response. Download and AirDrop the .AHAP file to your iPhone for real-time validation.
                     </p>
                   </div>
                 </div>
