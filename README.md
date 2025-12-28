@@ -1,5 +1,3 @@
-Markdown
-
 # RightVibe
 
 > **Feel What You See. Convert Video into Immersive Haptic Tracks.**
