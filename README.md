@@ -1,3 +1,5 @@
+Markdown
+
 # RightVibe
 
 > **Feel What You See. Convert Video into Immersive Haptic Tracks.**
@@ -10,14 +12,12 @@ Ideal for mobile app developers and content creators, RightVibe allows you to ge
 
 ---
 
----
-
 ## ✨ Features
 
 * **Universal Video Input:** Accepts major video container formats (e.g., MP4, MOV, AVI) for analysis.
 * **Intelligent Interpretation:** Uses advanced algorithms to detect impacts, motion, textures, and audio swells within the video content.
 * **Mobile-Ready Output:** Generates standardized haptic track files ready for integration into iOS (AHAP) and Android ecosystems.
-* **Customizable Intensity:** (Optional: If your tool supports this) Fine-tune the gain and threshold of the generated haptics to match the desired vibe of your app.
+* **Customizable Intensity:** Fine-tune the gain and threshold of the generated haptics to match the desired vibe of your app.
 
 ## 🚀 Getting Started
 
@@ -30,24 +30,42 @@ What things you need to install the software and how to install them:
 ```bash
 [INSERT PREREQUISITE 1, e.g., Python >= 3.9 or Node.js >= 16]
 [INSERT PREREQUISITE 2, e.g., ffmpeg]
+Installation
+Clone the repo:
 
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+Bash
 
-# Run and deploy your AI Studio app
+git clone [https://github.com/alexmlevin/L-R-RightVibe.git](https://github.com/alexmlevin/L-R-RightVibe.git)
+Navigate to the project directory:
 
-This contains everything you need to run your app locally.
+Bash
 
-View your app in AI Studio: https://ai.studio/apps/drive/1BO3K4BPIeQj7VLEKQijbyWVaUTiGdsNq
+cd RightVibe
+Install dependencies:
 
-## Run Locally
+Bash
 
-**Prerequisites:**  Node.js
+[INSERT INSTALL COMMAND, e.g., pip install -r requirements.txt or npm install]
+📳 Usage
+To process a video and generate a haptic track:
+
+Bash
+
+[INSERT RUN COMMAND, e.g., python process.py --input "myvideo.mp4" --output_format ios]
+General Workflow:
+
+Place your source video file in the input directory.
+
+Run the RightVibe command-line tool pointing to the video.
+
+Retrieve the generated haptic file from the output directory.
+
+Import the track into your mobile project (e.g., Xcode or Android Studio).
+
+📝 License
+Distributed under the MIT License. See LICENSE for more information.
+
+<p align="center"> <strong>RightVibe</strong> © 2025 Alex Levin
 
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Copyright Levin & Riegner, LLC. Engineered at <a href="https://levinriegner.com">Levin Riegner (L+R)</a>. </p>
