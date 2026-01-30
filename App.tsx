@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   Upload, 
   Download, 
@@ -10,7 +10,11 @@ import {
   Cpu,
   Smartphone,
   ExternalLink,
-  Info
+  Info,
+  Copy,
+  Check,
+  Key,
+  BookOpen
 } from 'lucide-react';
 import { AHAPFile } from './types';
 import { generateHapticsFromVideo } from './geminiService';
@@ -26,9 +30,27 @@ const App: React.FC = () => {
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'ios' | 'android'>('ios');
+  const [hasKey, setHasKey] = useState<boolean>(false);
+  
+  // Feedback states for copying
+  const [copiediOS, setCopiediOS] = useState(false);
+  const [copiedAndroid, setCopiedAndroid] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio && window.aistudio.hasSelectedApiKey) {
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected);
+      }
+    };
+    checkKey();
+    const interval = setInterval(checkKey, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,6 +59,13 @@ const App: React.FC = () => {
       setVideoUrl(URL.createObjectURL(file));
       setAhapResult(null);
       setError(null);
+    }
+  };
+
+  const handleSelectKey = async () => {
+    if (window.aistudio && window.aistudio.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      setHasKey(true);
     }
   };
 
@@ -88,7 +117,12 @@ const App: React.FC = () => {
       setAhapResult(ahap);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to generate haptics. Please try again.');
+      if (err.message && err.message.includes("Requested entity was not found")) {
+        setError("API Key Error: Please re-select your key.");
+        setHasKey(false);
+      } else {
+        setError(err.message || 'Failed to generate haptics. Please try again.');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -109,6 +143,48 @@ const App: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const androidPayload = useMemo(() => {
+    if (!ahapResult) return null;
+    return ahapResult.Pattern.map(p => {
+      const e = p.Event;
+      const intensity = e.EventParameters.find(param => param.ParameterID === 'HapticIntensity')?.ParameterValue || 0;
+      return {
+        type: e.EventType === 'HapticTransient' ? 'impact' : 'vibration',
+        startTimeMs: Math.round(e.Time * 1000),
+        durationMs: e.EventDuration ? Math.round(e.EventDuration * 1000) : 50,
+        amplitude: Math.round(intensity * 255)
+      };
+    });
+  }, [ahapResult]);
+
+  const downloadAndroid = () => {
+    if (!androidPayload) return;
+    const blob = new Blob([JSON.stringify(androidPayload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${videoFile?.name.split('.')[0] || 'track'}-android.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const copyToClipboard = async (content: string, type: 'ios' | 'android') => {
+    try {
+      await navigator.clipboard.writeText(content);
+      if (type === 'ios') {
+        setCopiediOS(true);
+        setTimeout(() => setCopiediOS(false), 2000);
+      } else {
+        setCopiedAndroid(true);
+        setTimeout(() => setCopiedAndroid(false), 2000);
+      }
+    } catch (err) {
+      console.error('Failed to copy!', err);
+    }
   };
 
   const togglePlayback = () => {
@@ -176,7 +252,7 @@ const App: React.FC = () => {
         <div className="max-w-4xl">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.6em] text-[#d4ff00] mb-8">Introduction</h2>
           <p className="text-3xl lg:text-4xl font-light tracking-tight text-white leading-[1.15] lg:leading-[1.1]">
-            RightVibe is a proprietary tactile engineering tool that translates visual kinetics into high-fidelity haptic tracks for iOS devices. By analyzing motion vectors and temporal events, it generates native .AHAP manifests for seamless taptic integration.
+            RightVibe is an open source tactile engineering tool that translates visual kinetics into high-fidelity haptic tracks for iOS and Android devices. By analyzing motion vectors and temporal events, it generates native .AHAP manifests and Android-compatible haptic payloads for seamless cross-platform integration.
           </p>
         </div>
       </section>
@@ -184,6 +260,38 @@ const App: React.FC = () => {
       <main className="flex-1 max-w-7xl mx-auto w-full p-8 lg:p-16 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24">
         {/* Step 1 */}
         <div className="lg:col-span-5 flex flex-col gap-12">
+          {/* API Configuration Section */}
+          <section className="space-y-6 bg-zinc-950/50 p-8 border border-white/5 rounded-none">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.5em] text-white border-l-2 border-[#d4ff00] pl-4">System / API Key</h2>
+              <div className="group relative">
+                <Info className="w-4 h-4 text-[#d4ff00] cursor-help transition-colors hover:text-white" />
+                <div className="absolute right-0 bottom-full mb-4 w-72 p-6 bg-black border border-[#d4ff00]/30 text-[12px] text-white leading-relaxed opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] translate-y-2 group-hover:translate-y-0 backdrop-blur-xl">
+                  <span className="font-bold text-[#d4ff00] block mb-3 uppercase tracking-[0.2em] text-[10px]">Secure Synthesis</span>
+                  To access high-fidelity multimodal synthesis models, you must select an API key from a paid GCP project with billing enabled.
+                  <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="block mt-4 text-[#d4ff00] hover:underline flex items-center gap-2">
+                    Billing Docs <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <button 
+              onClick={handleSelectKey}
+              className={`w-full py-4 border flex items-center justify-center gap-3 transition-all font-bold uppercase tracking-[0.3em] text-[10px] ${hasKey ? 'bg-zinc-900 border-white/10 text-white/40' : 'bg-[#d4ff00]/5 border-[#d4ff00]/30 text-[#d4ff00] hover:bg-[#d4ff00] hover:text-black'}`}
+            >
+              {hasKey ? (
+                <>
+                  <Check className="w-3 h-3" /> API Key Active
+                </>
+              ) : (
+                <>
+                  <Key className="w-3 h-3" /> Select Project Key
+                </>
+              )}
+            </button>
+          </section>
+
           <section className="space-y-10">
             <div className="flex items-center justify-between">
               <h2 className="text-[11px] font-bold uppercase tracking-[0.5em] text-white border-l-2 border-[#d4ff00] pl-4">01 / Source Analysis</h2>
@@ -250,9 +358,9 @@ const App: React.FC = () => {
 
             <button 
               onClick={handleGenerate} 
-              disabled={!videoFile || isProcessing} 
+              disabled={!videoFile || isProcessing || !hasKey} 
               className={`w-full py-8 rounded-none font-bold uppercase tracking-[0.5em] text-[11px] transition-all duration-700 shadow-2xl relative overflow-hidden group/btn ${
-                !videoFile || isProcessing 
+                !videoFile || isProcessing || !hasKey
                 ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5' 
                 : 'bg-[#d4ff00] text-black hover:bg-white active:scale-[0.99]'
               }`}
@@ -270,6 +378,9 @@ const App: React.FC = () => {
               )}
             </button>
             {error && <p className="text-red-500 text-[10px] font-bold uppercase tracking-[0.4em] text-center bg-red-500/10 py-4 border border-red-500/20">{error}</p>}
+            {!hasKey && videoFile && !isProcessing && (
+              <p className="text-[10px] text-[#d4ff00]/60 uppercase tracking-[0.2em] text-center">Please select an API key to enable synthesis</p>
+            )}
           </section>
 
           <section className="border-t border-white/10 pt-16 flex items-start gap-10 opacity-90 hover:opacity-100 transition-opacity duration-1000">
@@ -279,7 +390,7 @@ const App: React.FC = () => {
             <div>
               <h3 className="text-[11px] font-bold uppercase tracking-[0.5em] text-white mb-4">Core Haptics Engine</h3>
               <p className="text-[14px] text-white leading-relaxed font-light">
-                Utilizing advanced temporal reasoning to map complex motion profiles directly to the .AHAP schema for iOS native integration.
+                Utilizing advanced temporal reasoning to map complex motion profiles directly to the .AHAP schema for iOS and Android native integration.
               </p>
             </div>
           </section>
@@ -297,25 +408,59 @@ const App: React.FC = () => {
                   <Info className="w-4 h-4 text-white/50 cursor-help transition-colors hover:text-white" />
                   <div className="absolute left-0 bottom-full mb-4 w-72 p-6 bg-zinc-950 border border-white/10 text-[12px] text-white leading-relaxed opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] translate-y-2 group-hover:translate-y-0">
                     <span className="font-bold text-[#d4ff00] block mb-3 uppercase tracking-[0.2em] text-[10px]">How it works</span>
-                    Motion vectors are translated into Apple's Core Haptics schema, creating a temporal manifest of intensity and sharpness parameters ready for deployment.
+                    Motion vectors are translated into Apple's Core Haptics schema and Android vibration arrays, creating temporal manifests ready for deployment.
                   </div>
                 </div>
               </div>
               {ahapResult && (
-                <button 
-                  onClick={downloadAhap} 
-                  className="group flex items-center gap-6 transition-all"
-                >
-                  <span className="text-[11px] font-bold uppercase tracking-[0.4em] text-[#d4ff00] group-hover:tracking-[0.5em] transition-all">Download AHAP</span>
-                  <div className="w-12 h-12 bg-[#d4ff00] flex items-center justify-center group-hover:bg-white transition-colors duration-500">
-                    <Download className="w-5 h-5 text-black" />
+                <div className="flex flex-col sm:flex-row gap-6">
+                  {/* iOS Group */}
+                  <div className="flex items-center">
+                    <button 
+                      onClick={downloadAhap} 
+                      className="group flex items-center gap-4 transition-all"
+                      title="Download iOS AHAP"
+                    >
+                      <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-[#d4ff00] group-hover:tracking-[0.5em] transition-all">iOS .AHAP</span>
+                      <div className="w-10 h-10 bg-[#d4ff00] flex items-center justify-center group-hover:bg-white transition-colors duration-500">
+                        <Download className="w-4 h-4 text-black" />
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => copyToClipboard(JSON.stringify(ahapResult, null, 2), 'ios')}
+                      className="w-10 h-10 border border-white/10 ml-2 flex items-center justify-center hover:bg-white/5 transition-colors"
+                      title="Copy AHAP JSON"
+                    >
+                      {copiediOS ? <Check className="w-4 h-4 text-[#d4ff00]" /> : <Copy className="w-4 h-4 text-white/50" />}
+                    </button>
                   </div>
-                </button>
+                  
+                  {/* Android Group */}
+                  <div className="flex items-center">
+                    <button 
+                      onClick={downloadAndroid} 
+                      className="group flex items-center gap-4 transition-all"
+                      title="Download Android JSON"
+                    >
+                      <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-white/70 group-hover:tracking-[0.5em] transition-all">Android JSON</span>
+                      <div className="w-10 h-10 bg-white/10 flex items-center justify-center group-hover:bg-[#d4ff00] transition-colors duration-500">
+                        <Download className="w-4 h-4 text-white group-hover:text-black" />
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => copyToClipboard(JSON.stringify(androidPayload, null, 2), 'android')}
+                      className="w-10 h-10 border border-white/10 ml-2 flex items-center justify-center hover:bg-white/5 transition-colors"
+                      title="Copy Android JSON"
+                    >
+                      {copiedAndroid ? <Check className="w-4 h-4 text-[#d4ff00]" /> : <Copy className="w-4 h-4 text-white/50" />}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
 
             {ahapResult ? (
-              <div className="flex-1 flex flex-col gap-20 relative z-10">
+              <div className="flex-1 flex flex-col gap-12 relative z-10 overflow-y-auto pr-4 scrollbar-thin">
                 <div className="space-y-8">
                   <div className="flex justify-between text-[11px] font-bold uppercase tracking-[0.5em] text-white">
                     <span className="flex items-center gap-3">
@@ -336,19 +481,91 @@ const App: React.FC = () => {
                       <Smartphone className="w-4 h-4" /> Professional Tuning
                     </p>
                     <p className="text-[13px] text-white mt-4 font-light leading-relaxed">
-                      Drag the intensity handles above to refine the haptic response. Download and AirDrop the .AHAP file to your iPhone for real-time validation.
+                      Drag the intensity handles above to refine the response. The manifests update in real-time, providing native parameters for both iOS and Android SDKs.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex-1 flex flex-col gap-8 min-h-0">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                    <h3 className="text-[11px] font-bold uppercase tracking-[0.5em] text-white">JSON Manifest</h3>
-                    <span className="text-[10px] font-mono text-white/40">VERSION 1.0</span>
+                {/* Implementation Guide */}
+                <div className="space-y-12 py-12 border-y border-white/5">
+                  <div className="flex items-center gap-4">
+                    <BookOpen className="w-4 h-4 text-[#d4ff00]" />
+                    <h3 className="text-[11px] font-bold uppercase tracking-[0.5em] text-white">Adding haptic output to your project</h3>
                   </div>
-                  <div className="flex-1 bg-black p-10 font-mono text-[13px] overflow-auto scrollbar-thin border border-white/10 selection:bg-[#d4ff00] selection:text-black">
+                  
+                  <div className="grid grid-cols-1 gap-16">
+                    {/* iOS Instructions */}
+                    <div className="space-y-6">
+                      <h4 className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#d4ff00]">iOS (Swift / Core Haptics)</h4>
+                      <p className="text-[13px] text-white/70 font-light leading-relaxed">
+                        RightVibe outputs AHAP files supported on iOS 13+ (iPhone 8+).
+                      </p>
+                      <ol className="text-[12px] space-y-4 text-white/50 list-decimal pl-4">
+                        <li>Add the <code className="text-white">.ahap</code> file to your Xcode project assets.</li>
+                        <li>Initialize <code className="text-white">CHHapticEngine</code> and play the pattern from your bundle:</li>
+                      </ol>
+                      <div className="bg-black border border-white/5 p-6 font-mono text-[11px] overflow-x-auto text-white/80">
+                        <pre>{`let engine = try CHHapticEngine()
+try engine.start()
+let url = Bundle.main.url(forResource: "Track", withExtension: "ahap")!
+try engine.playPattern(from: url)`}</pre>
+                      </div>
+                    </div>
+
+                    {/* Android Instructions */}
+                    <div className="space-y-6">
+                      <h4 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/90">Android (Kotlin / VibrationEffect)</h4>
+                      <p className="text-[13px] text-white/70 font-light leading-relaxed">
+                        Use the JSON payload to construct native VibrationEffect wavefroms.
+                      </p>
+                      <ol className="text-[12px] space-y-4 text-white/50 list-decimal pl-4">
+                        <li>Store JSON in <code className="text-white">res/raw/</code>.</li>
+                        <li>Parse event timings and amplitudes (0-255 scale provided).</li>
+                        <li>Build and play:</li>
+                      </ol>
+                      <div className="bg-black border border-white/5 p-6 font-mono text-[11px] overflow-x-auto text-white/80">
+                        <pre>{`val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
+vibrator.vibrate(effect)`}</pre>
+                      </div>
+                    </div>
+
+                    {/* Flutter Instructions */}
+                    <div className="space-y-6">
+                      <h4 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/70">Flutter (Cross-Platform)</h4>
+                      <p className="text-[13px] text-white/70 font-light leading-relaxed">
+                        Use the <code className="text-white">core_haptics</code> package for full native AHAP support on iOS.
+                      </p>
+                      <div className="bg-black border border-white/5 p-6 font-mono text-[11px] overflow-x-auto text-white/80">
+                        <pre>{`final engine = HapticEngine();
+await engine.playFromAsset('assets/track.ahap');`}</pre>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-8 min-h-0 pt-8 pb-12">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                    <div className="flex gap-10">
+                      <button 
+                        onClick={() => setActiveTab('ios')}
+                        className={`text-[11px] font-bold uppercase tracking-[0.5em] transition-all pb-4 -mb-4.5 border-b-2 ${activeTab === 'ios' ? 'text-[#d4ff00] border-[#d4ff00]' : 'text-white/40 border-transparent hover:text-white/60'}`}
+                      >
+                        iOS AHAP
+                      </button>
+                      <button 
+                        onClick={() => setActiveTab('android')}
+                        className={`text-[11px] font-bold uppercase tracking-[0.5em] transition-all pb-4 -mb-4.5 border-b-2 ${activeTab === 'android' ? 'text-[#d4ff00] border-[#d4ff00]' : 'text-white/40 border-transparent hover:text-white/60'}`}
+                      >
+                        Android JSON
+                      </button>
+                    </div>
+                    <span className="text-[10px] font-mono text-white/40">MANIFEST OUTPUT</span>
+                  </div>
+                  <div className="bg-black p-10 font-mono text-[13px] overflow-auto scrollbar-thin border border-white/10 selection:bg-[#d4ff00] selection:text-black">
                     <pre className="text-white leading-[1.8]">
-                      {JSON.stringify(ahapResult, null, 2)}
+                      {activeTab === 'ios' 
+                        ? JSON.stringify(ahapResult, null, 2) 
+                        : JSON.stringify(androidPayload, null, 2)}
                     </pre>
                   </div>
                 </div>
@@ -360,12 +577,12 @@ const App: React.FC = () => {
                 </div>
                 <h3 className="text-2xl font-light tracking-tight text-white mb-6 uppercase tracking-[0.3em]">Synthesis Required</h3>
                 <p className="text-[12px] uppercase font-bold tracking-[0.5em] text-white/50 max-w-sm leading-[2]">
-                  Awaiting analysis of the input asset to generate tactile metadata.
+                  Awaiting analysis of the input asset to generate cross-platform tactile metadata.
                 </p>
                 <div className="mt-12 pt-12 border-t border-white/10 max-w-sm opacity-90">
                    <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#d4ff00] mb-4">Ready for deployment?</p>
                    <p className="text-[12px] font-light text-white leading-relaxed">
-                     Once generated, AirDrop the exported .AHAP file to your iPhone and open it to experience the tactile track in real-time.
+                     Export to iOS (.AHAP) or Android (JSON) to integrate high-fidelity taptic feedback into your mobile applications.
                    </p>
                 </div>
               </div>
