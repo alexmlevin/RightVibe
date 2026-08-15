@@ -20,14 +20,15 @@ async function urlToBase64(url: string): Promise<{ base64: string; mimeType: str
 export async function generateHapticsFromSfxUrl(
   sfxUrl: string,
   hotspotType: string,
-  label: string
+  label: string,
+  durationSeconds?: number
 ): Promise<AHAPFile> {
   const { base64, mimeType } = await urlToBase64(sfxUrl);
 
   const res = await fetch('/api/generate-haptics', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ audioBase64: base64, mimeType, hotspotType, label }),
+    body: JSON.stringify({ audioBase64: base64, mimeType, hotspotType, label, durationSeconds }),
   });
 
   if (!res.ok) {

@@ -53,16 +53,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Server is missing GEMINI_API_KEY.' });
   }
 
-  const { audioBase64, mimeType, hotspotType, label } = (req.body ?? {}) as {
+  const { audioBase64, mimeType, hotspotType, label, durationSeconds } = (req.body ?? {}) as {
     audioBase64?: string;
     mimeType?: string;
     hotspotType?: string;
     label?: string;
+    durationSeconds?: number;
   };
 
   if (!audioBase64 || !mimeType) {
     return res.status(400).json({ error: 'audioBase64 and mimeType are required.' });
   }
+
+  const hasDuration = typeof durationSeconds === 'number' && Number.isFinite(durationSeconds) && durationSeconds > 0;
 
   try {
     const ai = new GoogleGenAI({ apiKey });
@@ -78,11 +81,15 @@ would feel synchronized with it when a user interacts with this UI element.
 
 UI element type: ${hotspotType || 'button'}
 Element label: ${label || 'unlabeled'}
+${hasDuration ? `Audio duration: ${durationSeconds!.toFixed(2)} seconds - no event's Time (plus EventDuration for continuous events) may exceed this.` : ''}
 
 - Identify sharp impacts/clicks as Transient haptics.
 - Identify sustained tones, swells, or textures as Continuous haptics.
 - Match Intensity (strength) and Sharpness (crisp vs dull) to the sound's character.
 - Keep timing tightly aligned with the audio's transients and envelope.
+- Favor a small, deliberate set of events (typically 1-8) over reproducing every minor fluctuation -
+  a UI haptic should read as one clear gesture, not noise.
+- A short UI sound (under ~0.3s) should usually produce a single crisp Transient, not a flurry of events.
 
 Output ONLY valid AHAP JSON.`,
             },

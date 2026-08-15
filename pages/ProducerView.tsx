@@ -133,11 +133,14 @@ const ProducerView: React.FC = () => {
 
   const toggleHaptics = () => {
     if (!activeScreen || !selectedHotspot) return;
-    updateHotspot(activeScreen.id, selectedHotspot.id, (h) => ({
-      ...h,
-      hapticsEnabled: !h.hapticsEnabled,
-      ahap: h.ahap ?? createEmptyAhap(),
-    }));
+    updateHotspot(activeScreen.id, selectedHotspot.id, (h) => {
+      const turningOn = !h.hapticsEnabled;
+      const hasEvents = (h.ahap?.Pattern.length ?? 0) > 0;
+      // Seed a single tap so producers land on a working starting point instead of a blank
+      // visualizer the first time they turn haptics on.
+      const ahap = turningOn && !hasEvents ? addTapEvent(createEmptyAhap(), 0) : h.ahap ?? createEmptyAhap();
+      return { ...h, hapticsEnabled: turningOn, ahap };
+    });
   };
 
   const handleGenerate = async () => {
@@ -145,7 +148,12 @@ const ProducerView: React.FC = () => {
     setGenerating(true);
     setActionError(null);
     try {
-      const ahap = await generateHapticsFromSfxUrl(selectedHotspot.sfx.url, selectedHotspot.type, selectedHotspot.label);
+      const ahap = await generateHapticsFromSfxUrl(
+        selectedHotspot.sfx.url,
+        selectedHotspot.type,
+        selectedHotspot.label,
+        selectedHotspot.sfx.durationSeconds
+      );
       updateHotspot(activeScreen.id, selectedHotspot.id, (h) => ({ ...h, ahap, hapticsEnabled: true }));
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to generate haptic pattern.');

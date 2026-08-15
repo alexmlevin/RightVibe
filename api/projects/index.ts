@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
-import { redis, projectKey } from '../_lib/redis';
+import { saveProject } from '../_lib/store';
 import type { Project, Screen } from '../../types';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -27,6 +27,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     screens: screens as Screen[],
   };
 
-  await redis.set(projectKey(project.id), project);
+  await saveProject(project);
   return res.status(201).json(project);
 }

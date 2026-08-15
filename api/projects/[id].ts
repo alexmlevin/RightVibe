@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { redis, projectKey } from '../_lib/redis';
+import { getProjectById, saveProject } from '../_lib/store';
 import type { Project } from '../../types';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -9,7 +9,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'GET') {
-    const project = await redis.get<Project>(projectKey(id));
+    const project = await getProjectById(id);
     if (!project) {
       return res.status(404).json({ error: 'Project not found.' });
     }
@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'PUT') {
-    const existing = await redis.get<Project>(projectKey(id));
+    const existing = await getProjectById(id);
     if (!existing) {
       return res.status(404).json({ error: 'Project not found.' });
     }
@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       updatedAt: Date.now(),
     };
 
-    await redis.set(projectKey(id), updated);
+    await saveProject(updated);
     return res.status(200).json(updated);
   }
 

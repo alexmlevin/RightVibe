@@ -1,6 +1,6 @@
 # RightVibe
 
-**RightVibe is a collaboration tool for app developers and music/sound producers to add SFX and
+**RightVibe is a collaboration tool for app developers and music producers to add SFX and
 audio to mobile apps — with haptic feedback too — for a great-feeling user experience.**
 
 A developer uploads screenshots of their app and marks up hotspots over the interactive bits —
@@ -40,10 +40,11 @@ for iOS, since Safari has no vibration API at all.
 
 - **Frontend**: Vite + React + TypeScript, client-routed with `react-router-dom` (`HashRouter`, so
   no server rewrite is needed and nothing can shadow `/api/*`).
-- **Backend**: Vercel serverless functions under `api/`.
-  - `api/projects` (POST) / `api/projects/[id]` (GET, PUT) — project + hotspot CRUD, stored as
-    JSON in Redis.
-  - `api/blob/upload` — issues client upload tokens for Vercel Blob (screenshots + SFX audio).
+- **Backend**: Vercel serverless functions under `api/`, backed by a single Vercel Blob store for
+  everything — screenshots, SFX audio, and project/hotspot data (stored as JSON blobs). One
+  storage product to connect, no database to provision.
+  - `api/projects` (POST) / `api/projects/[id]` (GET, PUT) — project + hotspot CRUD.
+  - `api/blob/upload` — issues client upload tokens for screenshots and SFX audio.
   - `api/generate-haptics` — calls Gemini server-side to generate an AHAP pattern from an
     uploaded SFX file. The Gemini key never reaches the browser.
 
@@ -63,19 +64,18 @@ for iOS, since Safari has no vibration API at all.
 
 ## Deploy to Vercel
 
+Two steps, then deploy:
+
 1. Import this repository into [Vercel](https://vercel.com/new). `vercel.json` already declares
    the Vite framework, build command, and output directory.
 2. **Connect a Blob store**: Project → Storage → Create Database → Blob. This provisions
-   `BLOB_READ_WRITE_TOKEN` automatically.
-3. **Connect a Redis store**: Project → Storage → Create Database → pick a Redis option from the
-   Marketplace (Upstash). This provisions either `KV_REST_API_URL`/`KV_REST_API_TOKEN` or
-   `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` — `api/_lib/redis.ts` reads either naming.
-4. **Set `GEMINI_API_KEY`**: Settings → Environment Variables. This is read only in
+   `BLOB_READ_WRITE_TOKEN` automatically — no other database is needed.
+3. **Set `GEMINI_API_KEY`**: Settings → Environment Variables. Read only in
    `api/generate-haptics.ts`, server-side — it is never bundled into the client.
-5. Deploy.
+4. Deploy.
 
-See [.env.example](.env.example) for the full list of env vars needed to run everything locally
-via `vercel dev`.
+That's the whole setup. See [.env.example](.env.example) for the two env vars needed to run
+everything locally via `vercel dev`.
 
 ## Platform notes
 

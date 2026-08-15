@@ -26,7 +26,7 @@ const Landing: React.FC = () => {
         <div className="max-w-4xl">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.6em] text-[#d4ff00] mb-8">Introduction</h2>
           <p className="text-3xl lg:text-4xl font-light tracking-tight text-white leading-[1.15] lg:leading-[1.1]">
-            RightVibe is where app developers and sound designers build UI sound effects and haptic
+            RightVibe is where app developers and music producers build UI sound effects and haptic
             feedback together. Mark up your app's screens, hand the link to a producer, and they can
             drop in SFX, craft or AI-generate a haptic pattern, and feel it on a real phone.
           </p>
@@ -74,7 +74,7 @@ const Landing: React.FC = () => {
           </div>
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-[0.5em] text-white border-l-2 border-[#d4ff00] pl-4 mb-4">
-              Sound / Haptics Producer
+              Music Producer
             </h3>
             <p className="text-[14px] text-white/70 font-light leading-relaxed">
               Open the project link a developer shared with you, click a hotspot, and upload your
